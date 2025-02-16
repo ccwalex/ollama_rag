@@ -5,8 +5,8 @@ import os
 
 
 # Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = '7365946682:AAExdeNl0virhuQNt-2t1LdxbvIX2dhWzAY'
-TELEGRAM_CHAT_ID = '8075678709'
+BOT_TOKEN = 'bot_token'
+TELEGRAM_CHAT_ID = 'ID'
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import ChatPromptTemplate
