@@ -16,7 +16,7 @@ vector database:
 telegram:
 + telebot
 
-hardware I run with approximately 20 gb of pdf and some xml
+hardware I run with approximately 20 gb of pdf and some xml for RAG
 + intel 12th gen i7
 + 64 GB ram
 + 2 nvidia geforce 4080s
