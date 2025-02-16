@@ -6,6 +6,7 @@ some jupyter notebooks have some interrupted errors or changes that are not cons
 
 dependency:
 + ollama
++ langchain
 + unstructured
 + cuda (of course)
 + python / conda / jupyter
