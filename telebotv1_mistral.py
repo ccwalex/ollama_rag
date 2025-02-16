@@ -5,8 +5,8 @@ import os
 
 
 # Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = 'bot_token'
-TELEGRAM_CHAT_ID = 'ID'
+BOT_TOKEN = '7365946682:AAExdeNl0virhuQNt-2t1LdxbvIX2dhWzAY'
+TELEGRAM_CHAT_ID = '8075678709'
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import ChatPromptTemplate
@@ -22,10 +22,10 @@ FAISS_PATH = "faiss"
 
 
 # Initialize LLM
-llm = Ollama(model="mistral-small")
+llm = Ollama(model="mistral-nemo")
 
 # Initialize embedding model
-embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
 
 from langchain_qdrant import QdrantVectorStore
@@ -35,10 +35,10 @@ from qdrant_client.http.models import Distance, VectorParams
 client = QdrantClient(path='qdrant')
 print('done')
 
-vector_store = QdrantVectorStore(client=client, collection_name='ref_db', embedding=embeddings, )
+vector_store = QdrantVectorStore(client=client, collection_name='nomic_multicore', embedding=embeddings, )
 vector_retriever = vector_store.as_retriever()
 # Set up chain
-prompt = ChatPromptTemplate.from_template("""Answer the following question based on the provided context, previous conversations and online sources, quote the online sources:
+prompt = ChatPromptTemplate.from_template("""Answer the following question based on the provided context and previous conversations, you may use online sources when requested and you should quote the online sources that you used:
 
 <context>
 {context}
