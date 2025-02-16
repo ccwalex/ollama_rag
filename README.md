@@ -5,16 +5,16 @@ some jupyter notebooks have some interrupted errors or changes that are not cons
 
 
 dependency:
-ollama
-unstructured
-cuda (of course)
-python / conda / jupyter
++ ollama
++ unstructured
++ cuda (of course)
++ python / conda / jupyter
 
 vector database:
-qdrant (or your own choice)
++ qdrant (or your own choice)
 
 telegram:
-telebot
++ telebot
 
 hardware I run with approximately 20 gb of pdf and some xml
 + intel 12th gen i7
