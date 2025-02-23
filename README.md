@@ -25,3 +25,5 @@ hardware I run with approximately 20 gb of pdf and some xml for RAG
 
 
 V3 updated with long context double RAG using sklearn and hdf5 for easier maintenance
+
+original version using phi4 has surprisingly good performance even with shorter context window, can be used with lower vram
