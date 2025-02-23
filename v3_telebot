@@ -1,0 +1,134 @@
+from telegram.ext import Updater, MessageHandler
+
+import os
+
+
+
+# Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
+BOT_TOKEN = 'insert bot token'
+TELEGRAM_CHAT_ID = 'insert chat id'
+
+from langchain_community.llms import Ollama
+from langchain_core.prompts import PromptTemplate
+from langchain_community.embeddings import OllamaEmbeddings
+import ollama
+import h5py
+from sklearnex import patch_sklearn
+patch_sklearn()
+#from cuml.neighbors import NearestNeighbors as cuNN
+from  sklearn.neighbors import NearestNeighbors
+import numpy as np
+#load neighbor searchers
+import joblib
+
+long_search = joblib.load('long_search_sk_nomic.pkl')
+short_search = joblib.load('short_search_sk_nomic.pkl')
+
+
+
+
+print('done')
+
+
+from ollama import generate
+model_name = 'mistral-small'
+def llm_invoke(message, model = model_name):
+    response = generate(
+        model,
+        message, options ={'num_ctx' : 30000}
+    )
+    return response.response
+
+def small_llm(message, model = model_name):
+    response = generate(
+        'phi4',
+        message, options ={'num_ctx' : 16000}
+    )
+    return response.response
+
+# Set up chain
+task_p = PromptTemplate.from_template("""from the question and retained information from previous conversation, what is your task: 
+<retained information> {retained_info} </retained information> Question: {question}""")
+
+query_p =  PromptTemplate.from_template(
+    """with reference to the context provided, the question, your task and retained information, generate questions to search for information for answering the question: 
+<your task> {task} </your task> 
+<context> {context} </context> 
+<question> {question} </question> 
+<retained information> {retained_info} </retained information>""")
+
+answer_p = PromptTemplate.from_template("""with reference to the context provided, the question, your task and retained information, respond to the question. Do not use online sources. 
+task: <your task> {task} </your task> 
+context: <context> {context}</context> 
+question: <question> {question} </question> 
+retained information: <retained information> {retained_info} </retained information>""")
+
+info_p = PromptTemplate.from_template("with reference to the answer you provided to the question, your task and retained information, generate the information required for continuing your task: task: <your task> {task} </your task> context: <context> {context} </context> question: <question> {question} </question> retained information: <retained information> {retained_info} </retained information> answer to question: <answer to question> {answer} </answer to question> ")
+
+def search_neigh(message):
+    return np.sort(long_search.kneighbors(np.array(ollama.embed(model="nomic-embed-text", input=message)['embeddings']), n_neighbors = 6, return_distance = False), axis = None)
+
+
+def what_task(message, retained_info):
+    return small_llm(message = task_p.format(question= message, retained_info= retained_info))
+    
+def llm_reply(message, retained_info, task):
+
+
+    #to complete chain of thought
+    task = what_task(message, retained_info)
+    ids = search_neigh(message)
+
+    with h5py.File("nomic_db.hdf5", "r") as f:
+        words = f['long_chunks'][ids]
+    context1 = '.'.join(str(words))
+
+    query = small_llm(message = #llm.invoke(
+        query_p.format(question= message, retained_info= retained_info, task= task, context= context1)
+                      )
+    queries = query.split('\n')
+    #print(queries)
+    queries = np.array(ollama.embed(model="nomic-embed-text", input=queries)['embeddings'])
+    ids2 = np.sort(short_search.kneighbors(queries, n_neighbors = 3, return_distance = False), axis = None)
+    #print(ids2)
+    with h5py.File("nomic_db.hdf5", "r") as f:
+        words = f['short_chunks'][np.unique(ids2)]
+    context2 = '.'.join(str(words))
+    context1 = context1 + context2
+    response = llm_invoke(message = #llm.invoke(
+        answer_p.format(question= message, retained_info= retained_info, task= task, context= context1)
+                         )
+
+    
+    return response, retained_info, task, context2
+
+
+def respond_to_user(message):
+    try:
+        task = joblib.load('v3_cache/task.pkl')
+        retained_info = joblib.load('v3_cache/retained_info.pkl')
+    except:
+        task =''
+        retained_info =''
+    response, retained_info, task, context = llm_reply(message.text, retained_info, task)
+    
+    return response, retained_info, task, context
+
+
+import telebot
+
+bot = telebot.TeleBot(BOT_TOKEN) 
+
+@bot.message_handler(func=lambda message: True)
+def reply(message):
+    response, retained_info, task, context = respond_to_user(message)
+    print(response)
+    bot.reply_to(message, response)
+    retained_info = llm_invoke(message = info_p.format(question= message, retained_info= retained_info, task = task, context= context, answer= response)
+                              )
+    joblib.dump(task, 'v3_cache/task.pkl')
+    joblib.dump(retained_info, 'v3_cache/retained_info.pkl')
+
+print('ready')
+
+bot.infinity_polling()
