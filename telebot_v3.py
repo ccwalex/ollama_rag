@@ -4,9 +4,11 @@ import os
 
 
 
-# Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = 'insert bot token'
-TELEGRAM_CHAT_ID = 'insert chat id'
+import os
+
+# Replace with your API token from BotFather, or set TELEGRAM_BOT_TOKEN env var
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'insert bot token')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'insert chat id')
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import PromptTemplate
@@ -91,7 +93,7 @@ def llm_reply(message, retained_info, task):
     queries = np.array(ollama.embed(model="nomic-embed-text", input=queries)['embeddings'])
     ids2 = np.sort(short_search.kneighbors(queries, n_neighbors = 3, return_distance = False), axis = None)
     #print(ids2)
-    with h5py.File("nomic_db.hdf5", "r") as f:
+    with h5py.File("nomic_short.hdf5", "r") as f:
         words = f['short_chunks'][np.unique(ids2)]
     context2 = '.'.join(str(words))
     context1 = context1 + context2
@@ -105,8 +107,8 @@ def llm_reply(message, retained_info, task):
 
 def respond_to_user(message):
     try:
-        task = joblib.load('v3_cache/task.pkl')
-        retained_info = joblib.load('v3_cache/retained_info.pkl')
+        task = joblib.load('telebot_v3_cache/task.pkl')
+        retained_info = joblib.load('telebot_v3_cache/retained_info.pkl')
     except:
         task =''
         retained_info =''
@@ -126,8 +128,9 @@ def reply(message):
     bot.reply_to(message, response)
     retained_info = llm_invoke(message = info_p.format(question= message, retained_info= retained_info, task = task, context= context, answer= response)
                               )
-    joblib.dump(task, 'v3_cache/task.pkl')
-    joblib.dump(retained_info, 'v3_cache/retained_info.pkl')
+    os.makedirs('telebot_v3_cache', exist_ok=True)
+    joblib.dump(task, 'telebot_v3_cache/task.pkl')
+    joblib.dump(retained_info, 'telebot_v3_cache/retained_info.pkl')
 
 print('ready')
 

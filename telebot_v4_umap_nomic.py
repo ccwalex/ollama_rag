@@ -1,5 +1,5 @@
 #using umap to reduce dimensions and memory footprint of database
-#retrieval by scikit-learn nearest neighbor and text stored in h5df
+#retrieval by scikit-learn nearest neighbor and text stored in hdf5
 
 
 from telegram.ext import Updater, MessageHandler
@@ -8,9 +8,11 @@ import os
 
 
 
-# Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = ''
-TELEGRAM_CHAT_ID = ''
+import os
+
+# Replace with your API token from BotFather, or set TELEGRAM_BOT_TOKEN env var
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import PromptTemplate
@@ -27,8 +29,8 @@ import joblib
 from umap import UMAP
 #embedder = OllamaEmbeddings(model="snowflake-arctic-embed2")
 #llm = Ollama(model="mistral-nemo")
-long_search = joblib.load('sumap_search.pkl')
-map = joblib.load('s_umap.pkl')
+long_search = joblib.load('short_umap_search.pkl')
+short_umap = joblib.load('short_umap.pkl')
 #short_search = joblib.load('short_search_sk_nomic.pkl')
 
 
@@ -82,7 +84,7 @@ Question: {input}""")
 
 def search_neigh(message):
     ids = long_search.kneighbors(
-        map.transform(np.array(ollama.embed(model="nomic-embed-text", input=message)['embeddings'])), n_neighbors = 8, return_distance = False)
+        short_umap.transform(np.array(ollama.embed(model="nomic-embed-text", input=message)['embeddings'])), n_neighbors = 8, return_distance = False)
     #print(dist)
     return np.sort(ids, axis = None)
 
@@ -106,7 +108,7 @@ def llm_reply(message, retained_info, task):
     queries = query.split('\n')
     #print(queries)
     queries = np.array(ollama.embed(model="nomic-embed-text", input=queries)['embeddings'])
-    distance, ids2 = long_search.kneighbors(map.transform(queries), n_neighbors = 3, return_distance = True)
+    distance, ids2 = long_search.kneighbors(short_umap.transform(queries), n_neighbors = 3, return_distance = True)
     #print(distance)
     #ids2 = ids2[distance < 0.2]
         
@@ -136,8 +138,8 @@ def short_reply(message):
 
 def respond_to_user(message):
     try:
-        task = joblib.load('v3_cache/task.pkl')
-        retained_info = joblib.load('v3_cache/retained_info.pkl')
+        task = joblib.load('telebot_v4_cache/task.pkl')
+        retained_info = joblib.load('telebot_v4_cache/retained_info.pkl')
     except:
         task =''
         retained_info =''
@@ -167,15 +169,19 @@ def reply_long(message):
 def reply_clear(message):
     task = ''
     retained_info =''
-    joblib.dump(task, 'v3_cache/task.pkl')
-    joblib.dump(retained_info, 'v3_cache/retained_info.pkl')
+    os.makedirs('telebot_v4_cache', exist_ok=True)
+    joblib.dump(task, 'telebot_v4_cache/task.pkl')
+    joblib.dump(retained_info, 'telebot_v4_cache/retained_info.pkl')
     bot.reply_to(message, 'cleared task and info')
 
 
 
 @bot.message_handler(content_types = 'text')
 def reply(message):
-    state = joblib.load('state.pkl')
+    try:
+        state = joblib.load('state.pkl')
+    except FileNotFoundError:
+        state = True
     if state:
         response, retained_info, task, context = respond_to_user(message)
         #print(response)
@@ -186,8 +192,9 @@ def reply(message):
             bot.reply_to(message, response)
         retained_info = llm_invoke(message = info_p.format(question= message, retained_info= retained_info, task = task, context= context, answer= response)
                                   )
-        joblib.dump(task, 'v3_cache/task.pkl')
-        joblib.dump(retained_info, 'v3_cache/retained_info.pkl')
+        os.makedirs('telebot_v4_cache', exist_ok=True)
+        joblib.dump(task, 'telebot_v4_cache/task.pkl')
+        joblib.dump(retained_info, 'telebot_v4_cache/retained_info.pkl')
     else:
         bot.reply_to(message, short_reply(message))
 
