@@ -4,9 +4,11 @@ import os
 
 
 
-# Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = 'Insert bot token'
-TELEGRAM_CHAT_ID = 'insert telegram chat id'
+import os
+
+# Replace with your API token from BotFather, or set TELEGRAM_BOT_TOKEN env var
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'Insert bot token')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'insert telegram chat id')
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import ChatPromptTemplate

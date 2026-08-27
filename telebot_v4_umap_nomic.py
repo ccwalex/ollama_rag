@@ -8,9 +8,11 @@ import os
 
 
 
-# Replace 'YOUR_BOT_TOKEN' with the API token obtained from BotFather
-BOT_TOKEN = ''
-TELEGRAM_CHAT_ID = ''
+import os
+
+# Replace with your API token from BotFather, or set TELEGRAM_BOT_TOKEN env var
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
 
 from langchain_community.llms import Ollama
 from langchain_core.prompts import PromptTemplate
@@ -167,6 +169,7 @@ def reply_long(message):
 def reply_clear(message):
     task = ''
     retained_info =''
+    os.makedirs('telebot_v4_cache', exist_ok=True)
     joblib.dump(task, 'telebot_v4_cache/task.pkl')
     joblib.dump(retained_info, 'telebot_v4_cache/retained_info.pkl')
     bot.reply_to(message, 'cleared task and info')
@@ -175,7 +178,10 @@ def reply_clear(message):
 
 @bot.message_handler(content_types = 'text')
 def reply(message):
-    state = joblib.load('state.pkl')
+    try:
+        state = joblib.load('state.pkl')
+    except FileNotFoundError:
+        state = True
     if state:
         response, retained_info, task, context = respond_to_user(message)
         #print(response)
@@ -186,6 +192,7 @@ def reply(message):
             bot.reply_to(message, response)
         retained_info = llm_invoke(message = info_p.format(question= message, retained_info= retained_info, task = task, context= context, answer= response)
                                   )
+        os.makedirs('telebot_v4_cache', exist_ok=True)
         joblib.dump(task, 'telebot_v4_cache/task.pkl')
         joblib.dump(retained_info, 'telebot_v4_cache/retained_info.pkl')
     else:

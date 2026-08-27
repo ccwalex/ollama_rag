@@ -1,46 +1,73 @@
 # ollama_rag
-my implementation of a telegram bot powered by local RAG with ollama and langchain
 
-some jupyter notebooks have some interrupted errors or changes that are not consistent
+Telegram RAG bot powered by local Ollama models. Ingest PDFs, build a retrieval index, run a bot.
 
+## Product pipeline
 
-dependency:
-+ ollama
-+ langchain
-+ unstructured
-+ cuda (of course)
-+ python / conda / jupyter
+```text
+ref_db/*.pdf
+    |
+    v
+build_index.py chunk  -->  long_chunks.pkl, short_chunks.pkl
+    |
+    +-- build_index.py qdrant  -->  qdrant/  -------------------->  telebot_v1_mistral.py
+    |
+    +-- build_index.py hdf5    -->  *.pkl + nomic_*.hdf5  ------>  telebot_v3.py
+    |
+    +-- build_index.py umap    -->  short_umap*.pkl + hdf5  --->  telebot_v4_umap_nomic.py
+```
 
-vector database:
-+ qdrant (or your own choice)
+The notebooks (`create_database.ipynb`, `hdf5_search.ipynb`, `qdrant.ipynb`) are the original exploratory versions of the same steps. `build_index.py` is the runnable script that produces the artifacts each bot expects.
 
-telegram:
-+ telebot
+## Quick start
 
-## bots
+1. Put source PDFs in `ref_db/`.
+2. Install deps: `pip install -r requirements.txt`
+3. Pull models: `ollama pull nomic-embed-text` and the LLM your bot uses (e.g. `ollama pull mistral-nemo` for v1).
+4. Build index for your bot version:
 
-| version | file | description |
-|---------|------|-------------|
-| v1 | `telebot_v1_mistral.py` | Qdrant + LangChain retrieval with mistral-nemo |
-| v3 | `telebot_v3.py` | long-context double RAG using sklearn and hdf5 |
-| v4 | `telebot_v4_umap_nomic.py` | UMAP-reduced nearest-neighbor retrieval with nomic embeddings |
+```bash
+python build_index.py chunk
+python build_index.py qdrant   # for v1
+# or
+python build_index.py hdf5     # for v3
+# or
+python build_index.py umap     # for v4
+```
 
-## notebooks
+5. Set your bot token and run:
 
-| file | purpose |
-|------|---------|
-| `create_database.ipynb` | build document chunks and vector stores |
-| `hdf5_search.ipynb` | embed chunks and build sklearn/hdf5 retrieval artifacts |
-| `qdrant.ipynb` | load chunks into qdrant |
+```bash
+export TELEGRAM_BOT_TOKEN=your_token
+python telebot_v1_mistral.py
+```
 
-## artifact naming
+## Bots
 
-- `long_chunks.pkl` / `short_chunks.pkl` — document chunk stores
-- `nomic_db.hdf5` / `nomic_short.hdf5` — hdf5 text stores
-- `long_search_sk_nomic.pkl` / `short_search_sk_nomic.pkl` — sklearn nearest-neighbor indexes (v3)
-- `short_umap.pkl` / `short_umap_search.pkl` — UMAP reducer and nearest-neighbor index (v4)
-- `telebot_v3_cache/` / `telebot_v4_cache/` — per-version conversation state
+| version | script | index backend | LLM |
+|---------|--------|---------------|-----|
+| v1 | `telebot_v1_mistral.py` | Qdrant + LangChain | mistral-nemo |
+| v3 | `telebot_v3.py` | sklearn NN + hdf5, double RAG | mistral-small + phi4 |
+| v4 | `telebot_v4_umap_nomic.py` | UMAP + sklearn NN + hdf5 | phi4 |
 
-original version using phi4 has surprisingly good performance even with shorter context window, can be used with lower vram
+v4 commands: `/long` (chain-of-thought), `/short` (fast), `/clear` (reset session).
 
-V4 added, using UMAP with nearest neighbor allows much faster retrieval and lower memory use (~95% reduction in my use)
+## Artifacts
+
+| file | produced by | consumed by |
+|------|-------------|-------------|
+| `long_chunks.pkl` | chunk | qdrant, hdf5, umap |
+| `short_chunks.pkl` | chunk | hdf5, umap |
+| `qdrant/` | qdrant | v1 |
+| `long_search_sk_nomic.pkl` | hdf5 | v3 |
+| `short_search_sk_nomic.pkl` | hdf5 | v3 |
+| `nomic_db.hdf5` | hdf5 | v3 |
+| `nomic_short.hdf5` | hdf5 | v3, v4 |
+| `short_umap.pkl` | umap | v4 |
+| `short_umap_search.pkl` | umap | v4 |
+
+## Notes
+
+- CUDA helps for embedding large corpora but is not required.
+- v3/v4 keep conversation state under `telebot_v3_cache/` and `telebot_v4_cache/`.
+- Original notebooks may have interrupted runs; prefer `build_index.py` for a clean build.

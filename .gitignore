@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+ref_db/
+qdrant/
+*.pkl
+*.hdf5
+state.pkl
+telebot_v3_cache/
+telebot_v4_cache/
