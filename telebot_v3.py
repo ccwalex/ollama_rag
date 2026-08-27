@@ -105,8 +105,8 @@ def llm_reply(message, retained_info, task):
 
 def respond_to_user(message):
     try:
-        task = joblib.load('v3_cache/task.pkl')
-        retained_info = joblib.load('v3_cache/retained_info.pkl')
+        task = joblib.load('telebot_v3_cache/task.pkl')
+        retained_info = joblib.load('telebot_v3_cache/retained_info.pkl')
     except:
         task =''
         retained_info =''
@@ -126,8 +126,8 @@ def reply(message):
     bot.reply_to(message, response)
     retained_info = llm_invoke(message = info_p.format(question= message, retained_info= retained_info, task = task, context= context, answer= response)
                               )
-    joblib.dump(task, 'v3_cache/task.pkl')
-    joblib.dump(retained_info, 'v3_cache/retained_info.pkl')
+    joblib.dump(task, 'telebot_v3_cache/task.pkl')
+    joblib.dump(retained_info, 'telebot_v3_cache/retained_info.pkl')
 
 print('ready')
 
